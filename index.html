@@ -261,14 +261,10 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
   <!-- Lisäys -->
   <div class="add-section">
     <h3>✏️ Lisää uusi ristikko</h3>
-    <div class="form-row">
+    <div class="form-row" style="grid-template-columns:1fr;">
       <div>
         <label>Ristikon nimi</label>
-        <input type="text" id="puzzleName" placeholder="esim. Tähtiristikko">
-      </div>
-      <div>
-        <label>Julkaisija / lehti</label>
-        <input type="text" id="puzzlePublisher" placeholder="esim. Ristikkolehti">
+        <input type="text" id="puzzleName" placeholder="esim. TÄHTIRISTIKKO" oninput="this.value=this.value.toUpperCase()">
       </div>
     </div>
     <div class="form-row three">
@@ -295,7 +291,7 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
       </div>
       <div>
         <label>Numero</label>
-        <input type="text" id="puzzleNumber" placeholder="esim. 3/26">
+        <input type="text" id="puzzleNumber" placeholder="esim. 3/26" oninput="this.value=this.value.toUpperCase()">
       </div>
     </div>
 
@@ -423,17 +419,16 @@ window.previewPhoto = (input) => {
 // LISÄÄ RISTIKKO
 // ============================
 window.addPuzzle = async () => {
-  const name = document.getElementById('puzzleName').value.trim();
-  const publisher = document.getElementById('puzzlePublisher').value.trim();
+  const name = document.getElementById('puzzleName').value.trim().toUpperCase();
   const month = parseInt(document.getElementById('puzzleMonth').value);
   const year = parseInt(document.getElementById('puzzleYear').value);
-  const number = document.getElementById('puzzleNumber').value.trim();
+  const number = document.getElementById('puzzleNumber').value.trim().toUpperCase();
 
   if(!name){ alert('Anna ristikon nimi!'); return; }
 
   const puzzle = {
     id: Date.now().toString(),
-    name, publisher, month, year, number,
+    name, month, year, number,
     photo: photoBase64 || null,
     addedAt: new Date().toISOString()
   };
@@ -443,7 +438,6 @@ window.addPuzzle = async () => {
 
   // Tyhjennä lomake
   document.getElementById('puzzleName').value = '';
-  document.getElementById('puzzlePublisher').value = '';
   document.getElementById('puzzleNumber').value = '';
   document.getElementById('photoInput').value = '';
   document.getElementById('photoPreview').style.display = 'none';
@@ -533,7 +527,7 @@ function render(){
         <div class="puzzle-info">
           <div class="puzzle-name">${p.name}</div>
           <div class="puzzle-meta">
-            ${monthShort}${p.number ? ' · ' + p.number : ''}${p.publisher ? ' · ' + p.publisher : ''}
+            ${monthShort}${p.number ? ' · ' + p.number : ''}
           </div>
         </div>
         <button class="puzzle-delete" onclick="deletePuzzle('${p.id}')" title="Poista">✕</button>

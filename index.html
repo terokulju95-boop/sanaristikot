@@ -220,6 +220,75 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 }
 .lightbox-close:hover { background: rgba(255,255,255,0.3); }
 
+/* Vuositilasto */
+.stats-card {
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.stats-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px; margin-bottom: 4px;
+}
+.stats-subtitle {
+  font-size: 12px; color: var(--muted);
+  margin-bottom: 20px; letter-spacing: 0.3px;
+}
+.year-tabs {
+  display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.year-tab {
+  padding: 5px 14px; border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: transparent; font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--muted); transition: all 0.2s;
+}
+.year-tab.active {
+  background: var(--ink); color: var(--paper);
+  border-color: var(--ink);
+}
+.chart-wrap {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 100px; padding-bottom: 24px; position: relative;
+}
+.chart-bar-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 4px; position: relative;
+}
+.chart-bar {
+  width: 100%; border-radius: 4px 4px 0 0;
+  background: var(--amber); transition: height 0.4s cubic-bezier(0.4,0,0.2,1);
+  min-height: 0; position: relative; cursor: pointer;
+}
+.chart-bar:hover { background: var(--amber-light); }
+.chart-bar .bar-tooltip {
+  position: absolute; bottom: calc(100% + 4px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink); color: var(--paper);
+  font-size: 11px; font-weight: 600; padding: 3px 7px;
+  border-radius: 4px; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.15s;
+}
+.chart-bar:hover .bar-tooltip { opacity: 1; }
+.chart-month {
+  font-size: 10px; color: var(--muted); position: absolute;
+  bottom: -20px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-weight: 500;
+}
+.stats-total {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.stats-total-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; color: var(--amber); line-height: 1;
+}
+.stats-total-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
 /* LOADER */
 .loader { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
 
@@ -306,6 +375,9 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 
     <button class="btn-add" onclick="addPuzzle()">Tallenna ristikko</button>
   </div>
+
+  <!-- Vuositilasto -->
+  <div id="statsArea" style="margin-bottom:32px;display:none;"></div>
 
   <!-- Lista -->
   <div id="listArea">
@@ -479,6 +551,76 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') window.closeLig
 document.getElementById('searchInput').addEventListener('input', () => render());
 
 // ============================
+// VUOSITILASTO
+// ============================
+const MONTHS_SHORT = ['','Tam','Hel','Maa','Huh','Tou','Kes','Hei','Elo','Syy','Lok','Mar','Jou'];
+let selectedYear = null;
+
+function getYears(){
+  const years = [...new Set(puzzles.map(p => p.year))].sort((a,b) => b-a);
+  return years;
+}
+
+function renderStats(){
+  const area = document.getElementById('statsArea');
+  if(!puzzles.length){ area.style.display='none'; return; }
+
+  area.style.display = 'block';
+  const years = getYears();
+  if(!selectedYear || !years.includes(selectedYear)) selectedYear = years[0];
+
+  // Laske kuukausittain
+  const monthlyCounts = Array(13).fill(0);
+  puzzles.filter(p => p.year === selectedYear).forEach(p => {
+    monthlyCounts[p.month]++;
+  });
+
+  const yearTotal = monthlyCounts.reduce((s,c) => s+c, 0);
+  const maxCount = Math.max(...monthlyCounts.slice(1), 1);
+
+  const yearTabs = years.map(y =>
+    `<button class="year-tab${y===selectedYear?' active':''}" onclick="selectYear(${y})">${y}</button>`
+  ).join('');
+
+  const bars = Array.from({length:12},(_,i)=>{
+    const m = i+1;
+    const count = monthlyCounts[m];
+    const heightPct = Math.round((count / maxCount) * 100);
+    const heightPx = Math.max(0, Math.round((count / maxCount) * 76));
+    return `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:${heightPx}px">
+          ${count>0?`<div class="bar-tooltip">${count}</div>`:''}
+        </div>
+        <div class="chart-month">${MONTHS_SHORT[m]}</div>
+      </div>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="stats-card">
+      <div class="stats-title">📊 Vuositilasto</div>
+      <div class="stats-subtitle">Ristikot kuukausittain</div>
+      <div class="year-tabs">${yearTabs}</div>
+      <div class="chart-wrap">${bars}</div>
+      <div class="stats-total">
+        <div>
+          <div class="stats-total-num">${yearTotal}</div>
+          <div class="stats-total-label">ristikkoa vuonna ${selectedYear}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--muted);">
+          Aktiivisin kuukausi:<br>
+          <strong style="color:var(--ink)">${MONTHS_FI[monthlyCounts.indexOf(Math.max(...monthlyCounts.slice(1)))]||'–'}</strong>
+        </div>
+      </div>
+    </div>`;
+}
+
+window.selectYear = (year) => {
+  selectedYear = year;
+  renderStats();
+};
+
+// ============================
 // RENDER
 // ============================
 function render(){
@@ -492,6 +634,7 @@ function render(){
     : puzzles;
 
   // Päivitä laskuri
+  renderStats();
   document.getElementById('totalCount').textContent =
     puzzles.length === 1 ? '1 ristikko' : puzzles.length + ' ristikkoa';
 
@@ -530,7 +673,7 @@ function render(){
         <div class="puzzle-info">
           <div class="puzzle-name">${p.name}</div>
           <div class="puzzle-meta">
-            ${monthShort}${p.number ? ' · ' + p.number : ''}
+            ${MONTHS_FI[p.month]} ${p.year}${p.number ? ' · ' + p.number : ''}
           </div>
         </div>
         <button class="puzzle-delete" onclick="deletePuzzle('${p.id}')" title="Poista">✕</button>

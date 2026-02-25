@@ -296,11 +296,17 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
     </div>
 
     <label style="margin-bottom:8px;">Kannen kuva</label>
-    <div class="photo-upload" id="photoUpload">
-      <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(this)">
+    <div class="photo-upload" id="photoUpload" onclick="document.getElementById('photoInput').click()">
+      <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(this)" style="display:none">
       <div class="photo-upload-icon">📷</div>
       <div class="photo-upload-text">Paina lisätäksesi kuva</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Kamera tai galleria</div>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button type="button" onclick="openCamera()" style="flex:1;padding:10px;background:var(--ink);color:var(--paper);border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">📸 Ota kuva</button>
+      <button type="button" onclick="openGallery()" style="flex:1;padding:10px;background:var(--cream);color:var(--ink);border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">🖼️ Galleria</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="previewPhoto(this)" style="display:none">
     <img id="photoPreview" class="photo-preview" alt="Esikatselu">
 
     <button class="btn-add" onclick="addPuzzle()">Tallenna ristikko</button>
@@ -391,6 +397,7 @@ async function loadData(){
 // KUVA
 // ============================
 window.previewPhoto = (input) => {
+  if(!input.files || !input.files[0]) return;
   const file = input.files[0];
   if(!file) return;
   const reader = new FileReader();
@@ -440,6 +447,7 @@ window.addPuzzle = async () => {
   document.getElementById('puzzleName').value = '';
   document.getElementById('puzzleNumber').value = '';
   document.getElementById('photoInput').value = '';
+  document.getElementById('cameraInput').value = '';
   document.getElementById('photoPreview').style.display = 'none';
   document.querySelector('.photo-upload').style.display = 'block';
   photoBase64 = null;
@@ -541,6 +549,16 @@ function render(){
       </div>`;
   }).join('');
 }
+
+// ============================
+// KAMERA / GALLERIA
+// ============================
+window.openCamera = () => {
+  document.getElementById('cameraInput').click();
+};
+window.openGallery = () => {
+  document.getElementById('photoInput').click();
+};
 
 // ============================
 // KÄYNNISTYS

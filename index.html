@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanaristikkoarkisto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1208;
+  --paper: #f5f0e8;
+  --cream: #ede6d6;
+  --amber: #c8861a;
+  --amber-light: #e8a832;
+  --amber-dim: rgba(200,134,26,0.15);
+  --muted: #7a6e5f;
+  --border: rgba(26,18,8,0.12);
+  --shadow: rgba(26,18,8,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* Paperi-tekstuuri taustalle */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
+}
+
+.app { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* HEADER */
+.header {
+  padding: 40px 0 32px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 32px;
+}
+.header-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.site-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(28px, 7vw, 42px);
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+.site-title em {
+  font-style: italic;
+  color: var(--amber);
+}
+.count-chip {
+  font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap;
+}
+
+/* HAE */
+.search-wrap { margin-top: 20px; position: relative; }
+.search-wrap::before {
+  content: '🔍';
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; pointer-events: none;
+}
+#searchInput {
+  width: 100%; padding: 12px 16px 12px 40px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; color: var(--ink);
+  outline: none; transition: border-color 0.2s;
+}
+#searchInput:focus { border-color: var(--amber); }
+#searchInput::placeholder { color: var(--muted); }
+
+/* LISÄYS */
+.add-section {
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.add-section h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+label { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+input[type=text], input[type=number], select {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--paper); font-family: 'DM Sans', sans-serif;
+  font-size: 15px; color: var(--ink); outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--amber); background: white; }
+
+/* Kuvanlisäys */
+.photo-upload {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 20px; text-align: center; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 10px; position: relative;
+  overflow: hidden;
+}
+.photo-upload:hover { border-color: var(--amber); background: var(--amber-dim); }
+.photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-upload-icon { font-size: 28px; margin-bottom: 6px; }
+.photo-upload-text { font-size: 13px; color: var(--muted); }
+.photo-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px; display: none; }
+
+.btn-add {
+  width: 100%; padding: 13px;
+  background: var(--ink); color: var(--paper);
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+  cursor: pointer; letter-spacing: 0.3px;
+  transition: all 0.2s;
+}
+.btn-add:hover { background: var(--amber); color: var(--ink); }
+.btn-add:active { transform: scale(0.98); }
+
+/* STATUS */
+#saveStatus {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 10px; text-align: center; font-size: 13px; font-weight: 500;
+  z-index: 9999; transition: opacity 0.5s; opacity: 0;
+}
+
+/* LISTA */
+.month-group { margin-bottom: 36px; }
+.month-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--amber);
+  border-bottom: 1px solid var(--amber-dim);
+  padding-bottom: 8px; margin-bottom: 16px;
+}
+
+.puzzle-card {
+  display: flex; align-items: center; gap: 16px;
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  margin-bottom: 10px; cursor: default;
+  transition: all 0.2s; position: relative;
+}
+.puzzle-card:hover { border-color: var(--amber); box-shadow: 0 4px 16px var(--shadow); }
+
+.puzzle-thumb {
+  width: 54px; height: 54px; border-radius: 6px;
+  object-fit: cover; flex-shrink: 0;
+  border: 1px solid var(--border);
+  cursor: pointer; transition: transform 0.2s;
+}
+.puzzle-thumb:hover { transform: scale(1.05); }
+.thumb-placeholder {
+  width: 54px; height: 54px; border-radius: 6px;
+  background: var(--cream); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0; color: var(--muted);
+}
+
+.puzzle-info { flex: 1; min-width: 0; }
+.puzzle-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.puzzle-meta { font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0.3px; }
+
+.puzzle-delete {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: transparent; border: 1px solid transparent;
+  color: var(--muted); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.puzzle-delete:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+/* TYHJÄ TILA */
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+.empty-text { font-size: 15px; line-height: 1.6; }
+
+/* KUVAN SUURENNOS */
+.lightbox {
+  position: fixed; inset: 0;
+  background: rgba(26,18,8,0.92);
+  display: none; align-items: center; justify-content: center;
+  z-index: 10000; padding: 20px; cursor: pointer;
+}
+.lightbox.open { display: flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.lightbox img {
+  max-width: 100%; max-height: 90vh;
+  border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  cursor: default;
+}
+.lightbox-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); border: none;
+  color: white; font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.3); }
+
+/* LOADER */
+.loader { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 400px) {
+  .form-row.three { grid-template-columns: 1fr 1fr; }
+}
+</style>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#c8861a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ristikot">
+</head>
+<body>
+
+<div id="saveStatus"></div>
+
+<!-- Kuvan suurennos -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <h1 class="site-title">Sana<em>ristikko</em>arkisto</h1>
+      <span class="count-chip" id="totalCount">0 ristikkoa</span>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Hae ristikon nimellä...">
+    </div>
+  </div>
+
+  <!-- Lisäys -->
+  <div class="add-section">
+    <h3>✏️ Lisää uusi ristikko</h3>
+    <div class="form-row">
+      <div>
+        <label>Ristikon nimi</label>
+        <input type="text" id="puzzleName" placeholder="esim. Tähtiristikko">
+      </div>
+      <div>
+        <label>Julkaisija / lehti</label>
+        <input type="text" id="puzzlePublisher" placeholder="esim. Ristikkolehti">
+      </div>
+    </div>
+    <div class="form-row three">
+      <div>
+        <label>Kuukausi</label>
+        <select id="puzzleMonth">
+          <option value="1">Tammikuu</option>
+          <option value="2">Helmikuu</option>
+          <option value="3">Maaliskuu</option>
+          <option value="4">Huhtikuu</option>
+          <option value="5">Toukokuu</option>
+          <option value="6">Kesäkuu</option>
+          <option value="7">Heinäkuu</option>
+          <option value="8">Elokuu</option>
+          <option value="9">Syyskuu</option>
+          <option value="10">Lokakuu</option>
+          <option value="11">Marraskuu</option>
+          <option value="12">Joulukuu</option>
+        </select>
+      </div>
+      <div>
+        <label>Vuosi</label>
+        <input type="number" id="puzzleYear" value="2026" min="2020" max="2040">
+      </div>
+      <div>
+        <label>Numero</label>
+        <input type="text" id="puzzleNumber" placeholder="esim. 3/26">
+      </div>
+    </div>
+
+    <label style="margin-bottom:8px;">Kannen kuva</label>
+    <div class="photo-upload" id="photoUpload">
+      <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(this)">
+      <div class="photo-upload-icon">📷</div>
+      <div class="photo-upload-text">Paina lisätäksesi kuva</div>
+    </div>
+    <img id="photoPreview" class="photo-preview" alt="Esikatselu">
+
+    <button class="btn-add" onclick="addPuzzle()">Tallenna ristikko</button>
+  </div>
+
+  <!-- Lista -->
+  <div id="listArea">
+    <div class="loader">Ladataan...</div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
+  authDomain: "hakemuspaivakirja.firebaseapp.com",
+  projectId: "hakemuspaivakirja",
+  storageBucket: "hakemuspaivakirja.firebasestorage.app",
+  messagingSenderId: "836133210317",
+  appId: "1:836133210317:web:d85131ae272ecf1938c184"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const DATA_DOC = doc(db, "ristikot", "data");
+
+let puzzles = [];
+let isSaving = false;
+let photoBase64 = null;
+
+const MONTHS_FI = ['','Tammikuu','Helmikuu','Maaliskuu','Huhtikuu','Toukokuu','Kesäkuu','Heinäkuu','Elokuu','Syyskuu','Lokakuu','Marraskuu','Joulukuu'];
+
+// ============================
+// STATUS
+// ============================
+function showStatus(msg, color){
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.style.background = color || '#c8861a';
+  el.style.color = color === '#22c55e' ? '#fff' : (color === '#dc2626' ? '#fff' : '#1a1208');
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 2500);
+}
+
+// ============================
+// FIREBASE
+// ============================
+async function saveData(){
+  if(isSaving) return;
+  isSaving = true;
+  showStatus('💾 Tallennetaan...', '#f97316');
+  try {
+    localStorage.setItem('ristikot_bkp', JSON.stringify(puzzles));
+    await setDoc(DATA_DOC, { json: JSON.stringify(puzzles) });
+    showStatus('✅ Tallennettu', '#22c55e');
+  } catch(e){
+    showStatus('❌ Tallennus epäonnistui', '#dc2626');
+    console.error(e);
+  }
+  isSaving = false;
+}
+
+async function loadData(){
+  try {
+    const snap = await getDoc(DATA_DOC);
+    if(snap.exists()){
+      puzzles = JSON.parse(snap.data().json) || [];
+    } else {
+      const bkp = localStorage.getItem('ristikot_bkp');
+      if(bkp) try { puzzles = JSON.parse(bkp); } catch(e){ puzzles=[]; }
+    }
+  } catch(e){
+    const bkp = localStorage.getItem('ristikot_bkp');
+    if(bkp) try { puzzles = JSON.parse(bkp); } catch(e2){ puzzles=[]; }
+    showStatus('⚠️ Yhteysvirhe', '#f59e0b');
+  }
+  render();
+
+  onSnapshot(DATA_DOC, snap => {
+    if(!snap.exists() || isSaving) return;
+    try { puzzles = JSON.parse(snap.data().json) || []; render(); } catch(e){}
+  });
+}
+
+// ============================
+// KUVA
+// ============================
+window.previewPhoto = (input) => {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Pakkaa kuva pienemmäksi (max 400px leveys)
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 400;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      const preview = document.getElementById('photoPreview');
+      preview.src = photoBase64;
+      preview.style.display = 'block';
+      document.querySelector('.photo-upload').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+// ============================
+// LISÄÄ RISTIKKO
+// ============================
+window.addPuzzle = async () => {
+  const name = document.getElementById('puzzleName').value.trim();
+  const publisher = document.getElementById('puzzlePublisher').value.trim();
+  const month = parseInt(document.getElementById('puzzleMonth').value);
+  const year = parseInt(document.getElementById('puzzleYear').value);
+  const number = document.getElementById('puzzleNumber').value.trim();
+
+  if(!name){ alert('Anna ristikon nimi!'); return; }
+
+  const puzzle = {
+    id: Date.now().toString(),
+    name, publisher, month, year, number,
+    photo: photoBase64 || null,
+    addedAt: new Date().toISOString()
+  };
+
+  puzzles.unshift(puzzle);
+  await saveData();
+
+  // Tyhjennä lomake
+  document.getElementById('puzzleName').value = '';
+  document.getElementById('puzzlePublisher').value = '';
+  document.getElementById('puzzleNumber').value = '';
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.querySelector('.photo-upload').style.display = 'block';
+  photoBase64 = null;
+  render();
+};
+
+// ============================
+// POISTA
+// ============================
+window.deletePuzzle = async (id) => {
+  if(!confirm('Poistetaanko ristikko?')) return;
+  puzzles = puzzles.filter(p => p.id !== id);
+  await saveData();
+  render();
+};
+
+// ============================
+// LIGHTBOX
+// ============================
+window.openLightbox = (src) => {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+};
+window.closeLightbox = () => {
+  document.getElementById('lightbox').classList.remove('open');
+};
+
+// Sulje ESC:llä
+document.addEventListener('keydown', e => { if(e.key==='Escape') window.closeLightbox(); });
+
+// ============================
+// HAKU
+// ============================
+document.getElementById('searchInput').addEventListener('input', () => render());
+
+// ============================
+// RENDER
+// ============================
+function render(){
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filtered = query
+    ? puzzles.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        (p.publisher||'').toLowerCase().includes(query) ||
+        (p.number||'').toLowerCase().includes(query)
+      )
+    : puzzles;
+
+  // Päivitä laskuri
+  document.getElementById('totalCount').textContent =
+    puzzles.length === 1 ? '1 ristikko' : puzzles.length + ' ristikkoa';
+
+  const area = document.getElementById('listArea');
+  if(!filtered.length){
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📖</div>
+        <div class="empty-text">${query ? 'Ei hakutuloksia nimellä "'+query+'"' : 'Ei ristikkoja vielä.<br>Lisää ensimmäinen ylhäältä!'}</div>
+      </div>`;
+    return;
+  }
+
+  // Ryhmittele kuukauden ja vuoden mukaan
+  const groups = {};
+  filtered.forEach(p => {
+    const key = `${String(p.year).padStart(4,'0')}-${String(p.month).padStart(2,'0')}`;
+    if(!groups[key]) groups[key] = { month: p.month, year: p.year, puzzles: [] };
+    groups[key].puzzles.push(p);
+  });
+
+  // Järjestä uusin ensin
+  const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  area.innerHTML = sortedKeys.map(key => {
+    const g = groups[key];
+    const monthShort = `${g.month}/${String(g.year).slice(-2)}`;
+    const monthFull = `${MONTHS_FI[g.month]} ${g.year}`;
+
+    const cards = g.puzzles.map(p => `
+      <div class="puzzle-card">
+        ${p.photo
+          ? `<img class="puzzle-thumb" src="${p.photo}" alt="${p.name}" onclick="openLightbox('${p.photo}')">`
+          : `<div class="thumb-placeholder">📰</div>`
+        }
+        <div class="puzzle-info">
+          <div class="puzzle-name">${p.name}</div>
+          <div class="puzzle-meta">
+            ${monthShort}${p.number ? ' · ' + p.number : ''}${p.publisher ? ' · ' + p.publisher : ''}
+          </div>
+        </div>
+        <button class="puzzle-delete" onclick="deletePuzzle('${p.id}')" title="Poista">✕</button>
+      </div>
+    `).join('');
+
+    return `
+      <div class="month-group">
+        <div class="month-label">${monthFull} · ${g.puzzles.length} ristikko${g.puzzles.length!==1?'a':''}</div>
+        ${cards}
+      </div>`;
+  }).join('');
+}
+
+// ============================
+// KÄYNNISTYS
+// ============================
+// Aseta nykyinen kuukausi oletukseksi
+const now = new Date();
+document.getElementById('puzzleMonth').value = now.getMonth() + 1;
+document.getElementById('puzzleYear').value = now.getFullYear();
+
+loadData();
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('SW rekisteröity'))
+      .catch(e => console.log('SW virhe:', e));
+  });
+}
+
+// PWA asennuspainike
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const hint = document.createElement('div');
+  hint.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#c8861a;color:#1a1208;padding:14px 20px;border-radius:10px;box-shadow:0 5px 20px rgba(0,0,0,0.25);z-index:1000;text-align:center;font-family:DM Sans,sans-serif;font-size:14px;font-weight:500;';
+  hint.innerHTML = '📱 Asenna sovellus kotinäytölle!<br><button style="margin-top:8px;background:#1a1208;color:#f5f0e8;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;">Asenna</button>';
+  document.body.appendChild(hint);
+  hint.querySelector('button').addEventListener('click', async () => {
+    hint.remove();
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
+  setTimeout(() => { if(hint.parentNode) hint.remove(); }, 12000);
+});
+</script>
+</body>
+</html>

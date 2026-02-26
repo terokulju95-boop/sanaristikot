@@ -356,7 +356,7 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
       <div class="autocomplete-wrap">
         <label>Ristikon nimi</label>
         <input type="text" id="puzzleName" placeholder="esim. TÄHTIRISTIKKO"
-          oninput="this.value=this.value.toUpperCase();showSuggestions(this.value)"
+          oninput="this.value=this.value.toUpperCase(); setTimeout(()=>showSuggestions(this.value),0)"
           onkeydown="handleAutocompleteKey(event)"
           autocomplete="off">
         <div class="autocomplete-list" id="autocompleteList" style="display:none;"></div>
@@ -765,7 +765,7 @@ function showSuggestions(val){
   if(!val || val.length < 1){ list.style.display='none'; return; }
 
   const matches = [...new Set(puzzles.map(p => p.name))]
-    .filter(name => name.startsWith(val) && name !== val)
+    .filter(name => name.toUpperCase().startsWith(val.toUpperCase()) && name.toUpperCase() !== val.toUpperCase())
     .slice(0, 6);
 
   if(!matches.length){ list.style.display='none'; return; }

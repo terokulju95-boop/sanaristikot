@@ -289,6 +289,78 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 }
 .stats-total-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+/* MUOKKAUS MODAL */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,18,8,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000; display: none;
+  align-items: flex-end; justify-content: center;
+  padding: 0;
+}
+.modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+.modal-sheet {
+  background: var(--paper);
+  border-radius: 20px 20px 0 0;
+  padding: 28px 24px 40px;
+  width: 100%; max-width: 640px;
+  max-height: 90vh; overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: var(--border); margin: 0 auto 20px;
+}
+.modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; margin-bottom: 20px;
+}
+.modal-actions {
+  display: flex; gap: 10px; margin-top: 16px;
+}
+.btn-save {
+  flex: 1; padding: 13px;
+  background: var(--ink); color: var(--paper);
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-save:hover { background: var(--amber); color: var(--ink); }
+.btn-cancel {
+  flex: 1; padding: 13px;
+  background: transparent; color: var(--muted);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.edit-photo-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 10px;
+}
+.edit-thumb {
+  width: 60px; height: 60px; border-radius: 8px;
+  object-fit: cover; border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.edit-thumb-placeholder {
+  width: 60px; height: 60px; border-radius: 8px;
+  background: var(--cream); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; flex-shrink: 0;
+}
+.edit-photo-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.btn-photo-edit {
+  padding: 9px 12px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--cream); color: var(--ink);
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  font-weight: 500; cursor: pointer; text-align: left;
+}
+
 /* AUTOCOMPLETE */
 .autocomplete-wrap { position: relative; }
 .autocomplete-list {
@@ -330,6 +402,57 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 <body>
 
 <div id="saveStatus"></div>
+
+<!-- Muokkausmodal -->
+<div class="modal-overlay" id="editModal" onclick="closeEditIfOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Muokkaa ristikkoa</div>
+
+    <div class="edit-photo-row">
+      <img id="editThumb" class="edit-thumb" src="" alt="" style="display:none">
+      <div id="editThumbPlaceholder" class="edit-thumb-placeholder">📰</div>
+      <div class="edit-photo-btns">
+        <button class="btn-photo-edit" onclick="document.getElementById('editCameraInput').click()">📸 Ota uusi kuva</button>
+        <button class="btn-photo-edit" onclick="document.getElementById('editGalleryInput').click()">🖼️ Valitse galleriasta</button>
+        <button class="btn-photo-edit" onclick="removeEditPhoto()" style="color:#dc2626;">🗑️ Poista kuva</button>
+      </div>
+    </div>
+    <input type="file" id="editCameraInput" accept="image/*" capture="environment" onchange="editPreviewPhoto(this)" style="display:none">
+    <input type="file" id="editGalleryInput" accept="image/*" onchange="editPreviewPhoto(this)" style="display:none">
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Ristikon nimi</label>
+      <input type="text" id="editName" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <label>Kuukausi</label>
+        <select id="editMonth">
+          <option value="1">Tammikuu</option><option value="2">Helmikuu</option>
+          <option value="3">Maaliskuu</option><option value="4">Huhtikuu</option>
+          <option value="5">Toukokuu</option><option value="6">Kesäkuu</option>
+          <option value="7">Heinäkuu</option><option value="8">Elokuu</option>
+          <option value="9">Syyskuu</option><option value="10">Lokakuu</option>
+          <option value="11">Marraskuu</option><option value="12">Joulukuu</option>
+        </select>
+      </div>
+      <div>
+        <label>Vuosi</label>
+        <input type="number" id="editYear" min="2020" max="2040">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Numero</label>
+      <input type="text" id="editNumber" oninput="this.value=this.value.toUpperCase()">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEdit()">Peruuta</button>
+      <button class="btn-save" onclick="saveEdit()">Tallenna</button>
+    </div>
+  </div>
+</div>
 
 <!-- Kuvan suurennos -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
@@ -733,6 +856,7 @@ function render(){
             ${MONTHS_FI[p.month]} ${p.year}${p.number ? ' · ' + p.number : ''}
           </div>
         </div>
+        <button class="puzzle-edit" onclick="openEdit('${p.id}')" title="Muokkaa" style="width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin-right:4px;" onmouseover="this.style.background='#fef3c7';this.style.borderColor='#fcd34d';this.style.color='#92400e'" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';this.style.color='var(--muted)'">✏️</button>
         <button class="puzzle-delete" onclick="deletePuzzle('${p.id}')" title="Poista">✕</button>
       </div>
     `).join('');
@@ -753,6 +877,90 @@ window.openCamera = () => {
 };
 window.openGallery = () => {
   document.getElementById('photoInput').click();
+};
+
+// ============================
+// MUOKKAUS
+// ============================
+let editingId = null;
+let editPhotoBase64 = null;
+
+window.openEdit = (id) => {
+  const p = puzzles.find(p => p.id === id);
+  if(!p) return;
+  editingId = id;
+  editPhotoBase64 = p.photo || null;
+
+  document.getElementById('editName').value = p.name;
+  document.getElementById('editMonth').value = p.month;
+  document.getElementById('editYear').value = p.year;
+  document.getElementById('editNumber').value = p.number || '';
+
+  const thumb = document.getElementById('editThumb');
+  const placeholder = document.getElementById('editThumbPlaceholder');
+  if(p.photo){
+    thumb.src = p.photo;
+    thumb.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    thumb.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  document.getElementById('editModal').classList.add('open');
+};
+
+window.closeEdit = () => {
+  document.getElementById('editModal').classList.remove('open');
+  editingId = null; editPhotoBase64 = null;
+};
+
+window.closeEditIfOutside = (e) => {
+  if(e.target === document.getElementById('editModal')) closeEdit();
+};
+
+window.editPreviewPhoto = (input) => {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 200, maxH = 280;
+      const scale = Math.min(1, maxW/img.width, maxH/img.height);
+      canvas.width = Math.round(img.width*scale);
+      canvas.height = Math.round(img.height*scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      editPhotoBase64 = canvas.toDataURL('image/jpeg', 0.45);
+      const thumb = document.getElementById('editThumb');
+      thumb.src = editPhotoBase64;
+      thumb.style.display = 'block';
+      document.getElementById('editThumbPlaceholder').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeEditPhoto = () => {
+  editPhotoBase64 = null;
+  document.getElementById('editThumb').style.display = 'none';
+  document.getElementById('editThumbPlaceholder').style.display = 'flex';
+};
+
+window.saveEdit = async () => {
+  const name = document.getElementById('editName').value.trim().toUpperCase();
+  if(!name){ alert('Anna ristikon nimi!'); return; }
+  const p = puzzles.find(p => p.id === editingId);
+  if(!p) return;
+  p.name = name;
+  p.month = parseInt(document.getElementById('editMonth').value);
+  p.year = parseInt(document.getElementById('editYear').value);
+  p.number = document.getElementById('editNumber').value.trim().toUpperCase();
+  p.photo = editPhotoBase64;
+  closeEdit();
+  await saveData();
+  render();
 };
 
 // ============================

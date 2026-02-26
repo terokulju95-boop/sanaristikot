@@ -289,6 +289,28 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 }
 .stats-total-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+/* AUTOCOMPLETE */
+.autocomplete-wrap { position: relative; }
+.autocomplete-list {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: white; border: 1.5px solid var(--amber);
+  border-top: none; border-radius: 0 0 8px 8px;
+  z-index: 100; max-height: 200px; overflow-y: auto;
+  box-shadow: 0 8px 20px var(--shadow);
+}
+.autocomplete-item {
+  padding: 11px 14px; cursor: pointer; font-size: 15px;
+  font-weight: 600; border-bottom: 1px solid var(--border);
+  transition: background 0.15s; display: flex; align-items: center; gap: 8px;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover, .autocomplete-item.selected {
+  background: var(--amber-dim);
+}
+.autocomplete-item mark {
+  background: none; color: var(--amber); font-weight: 800;
+}
+
 /* LOADER */
 .loader { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
 
@@ -331,9 +353,13 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
   <div class="add-section">
     <h3>✏️ Lisää uusi ristikko</h3>
     <div class="form-row" style="grid-template-columns:1fr;">
-      <div>
+      <div class="autocomplete-wrap">
         <label>Ristikon nimi</label>
-        <input type="text" id="puzzleName" placeholder="esim. TÄHTIRISTIKKO" oninput="this.value=this.value.toUpperCase()">
+        <input type="text" id="puzzleName" placeholder="esim. TÄHTIRISTIKKO"
+          oninput="this.value=this.value.toUpperCase();showSuggestions(this.value)"
+          onkeydown="handleAutocompleteKey(event)"
+          autocomplete="off">
+        <div class="autocomplete-list" id="autocompleteList" style="display:none;"></div>
       </div>
     </div>
     <div class="form-row three">
@@ -728,6 +754,68 @@ window.openCamera = () => {
 window.openGallery = () => {
   document.getElementById('photoInput').click();
 };
+
+// ============================
+// AUTOCOMPLETE
+// ============================
+let acIndex = -1;
+
+function showSuggestions(val){
+  const list = document.getElementById('autocompleteList');
+  if(!val || val.length < 1){ list.style.display='none'; return; }
+
+  const matches = [...new Set(puzzles.map(p => p.name))]
+    .filter(name => name.startsWith(val) && name !== val)
+    .slice(0, 6);
+
+  if(!matches.length){ list.style.display='none'; return; }
+
+  acIndex = -1;
+  list.innerHTML = matches.map((name, i) => {
+    const highlighted = '<mark>' + name.slice(0, val.length) + '</mark>' + name.slice(val.length);
+    return `<div class="autocomplete-item" data-val="${name}" onmousedown="selectSuggestion('${name}')">
+      📝 ${highlighted}
+    </div>`;
+  }).join('');
+  list.style.display = 'block';
+}
+
+function selectSuggestion(val){
+  document.getElementById('puzzleName').value = val;
+  document.getElementById('autocompleteList').style.display = 'none';
+  acIndex = -1;
+}
+
+function handleAutocompleteKey(e){
+  const list = document.getElementById('autocompleteList');
+  const items = list.querySelectorAll('.autocomplete-item');
+  if(!items.length) return;
+
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    acIndex = Math.min(acIndex + 1, items.length - 1);
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    acIndex = Math.max(acIndex - 1, -1);
+  } else if(e.key === 'Enter' && acIndex >= 0){
+    e.preventDefault();
+    selectSuggestion(items[acIndex].dataset.val);
+    return;
+  } else if(e.key === 'Escape'){
+    list.style.display = 'none'; acIndex = -1; return;
+  } else { return; }
+
+  items.forEach((item, i) => item.classList.toggle('selected', i === acIndex));
+  if(acIndex >= 0) document.getElementById('puzzleName').value = items[acIndex].dataset.val;
+}
+
+// Sulje lista kun klikataan muualle
+document.addEventListener('click', e => {
+  if(!e.target.closest('.autocomplete-wrap')){
+    const list = document.getElementById('autocompleteList');
+    if(list) list.style.display = 'none';
+  }
+});
 
 // ============================
 // KÄYNNISTYS

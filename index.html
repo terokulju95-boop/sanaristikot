@@ -429,7 +429,13 @@ async function saveData(){
   showStatus('💾 Tallennetaan...', '#f97316');
   try {
     localStorage.setItem('ristikot_bkp', JSON.stringify(puzzles));
-    await setDoc(DATA_DOC, { json: JSON.stringify(puzzles) });
+    // Tallennetaan metadata ilman kuvia päädokumenttiin
+    const meta = puzzles.map(p => ({...p, photo: null}));
+    await setDoc(DATA_DOC, { json: JSON.stringify(meta), count: puzzles.length });
+    // Jokaisen ristikon kuva omaan dokumenttiin
+    await Promise.all(puzzles.map(p =>
+      setDoc(doc(db, 'ristikot', 'photo_' + p.id), { photo: p.photo || null })
+    ));
     showStatus('✅ Tallennettu', '#22c55e');
   } catch(e){
     showStatus('❌ Tallennus epäonnistui', '#dc2626');
@@ -438,14 +444,33 @@ async function saveData(){
   isSaving = false;
 }
 
+async function loadPhotos(list){
+  return Promise.all(list.map(async p => {
+    try {
+      const snap = await getDoc(doc(db, 'ristikot', 'photo_' + p.id));
+      if(snap.exists()) p.photo = snap.data().photo || null;
+    } catch(e){}
+    return p;
+  }));
+}
+
 async function loadData(){
   try {
     const snap = await getDoc(DATA_DOC);
     if(snap.exists()){
-      puzzles = JSON.parse(snap.data().json) || [];
+      const meta = JSON.parse(snap.data().json) || [];
+      // Jos vanha data (kuvat mukana) käytetään suoraan ja siirretään uuteen rakenteeseen
+      const hasOldPhotos = meta.some(p => p.photo);
+      if(hasOldPhotos){
+        puzzles = meta;
+        showStatus('🔄 Siirretään data uuteen rakenteeseen...', '#f97316');
+        await saveData(); // Tämä jakaa kuvat omiin dokumentteihin
+      } else {
+        puzzles = await loadPhotos(meta);
+      }
     } else {
       const bkp = localStorage.getItem('ristikot_bkp');
-      if(bkp) try { puzzles = JSON.parse(bkp); } catch(e){ puzzles=[]; }
+      if(bkp) try { puzzles = JSON.parse(bkp); await saveData(); } catch(e){ puzzles=[]; }
     }
   } catch(e){
     const bkp = localStorage.getItem('ristikot_bkp');
@@ -454,9 +479,13 @@ async function loadData(){
   }
   render();
 
-  onSnapshot(DATA_DOC, snap => {
+  onSnapshot(DATA_DOC, async snap => {
     if(!snap.exists() || isSaving) return;
-    try { puzzles = JSON.parse(snap.data().json) || []; render(); } catch(e){}
+    try {
+      const meta = JSON.parse(snap.data().json) || [];
+      puzzles = await loadPhotos(meta);
+      render();
+    } catch(e){}
   });
 }
 
@@ -473,12 +502,13 @@ window.previewPhoto = (input) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const maxW = 400;
-      const scale = Math.min(1, maxW / img.width);
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      const maxW = 200;
+      const maxH = 280;
+      const scale = Math.min(1, maxW / img.width, maxH / img.height);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      photoBase64 = canvas.toDataURL('image/jpeg', 0.45);
       const preview = document.getElementById('photoPreview');
       preview.src = photoBase64;
       preview.style.display = 'block';
@@ -527,6 +557,7 @@ window.addPuzzle = async () => {
 window.deletePuzzle = async (id) => {
   if(!confirm('Poistetaanko ristikko?')) return;
   puzzles = puzzles.filter(p => p.id !== id);
+  try { await setDoc(doc(db, 'ristikot', 'photo_' + id), { photo: null }); } catch(e){}
   await saveData();
   render();
 };

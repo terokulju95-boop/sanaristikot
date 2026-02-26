@@ -760,7 +760,7 @@ window.openGallery = () => {
 // ============================
 let acIndex = -1;
 
-function showSuggestions(val){
+window.showSuggestions = function(val){
   const list = document.getElementById('autocompleteList');
   if(!val || val.length < 1){ list.style.display='none'; return; }
 
@@ -780,13 +780,13 @@ function showSuggestions(val){
   list.style.display = 'block';
 }
 
-function selectSuggestion(val){
+window.selectSuggestion = function(val){
   document.getElementById('puzzleName').value = val;
   document.getElementById('autocompleteList').style.display = 'none';
   acIndex = -1;
 }
 
-function handleAutocompleteKey(e){
+window.handleAutocompleteKey = function(e){
   const list = document.getElementById('autocompleteList');
   const items = list.querySelectorAll('.autocomplete-item');
   if(!items.length) return;

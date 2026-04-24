@@ -389,6 +389,45 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 @media (max-width: 400px) {
   .form-row.three { grid-template-columns: 1fr 1fr; }
 }
+
+/* KIRJAUTUMINEN */
+#loginScreen {
+  position: fixed; inset: 0;
+  background: var(--paper);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 99999; padding: 24px;
+}
+.login-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px; color: var(--ink);
+  margin-bottom: 6px; text-align: center;
+}
+.login-logo em { font-style: italic; color: var(--amber); }
+.login-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; text-align: center; }
+.login-card {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 28px 24px;
+  width: 100%; max-width: 360px;
+  box-shadow: 0 4px 24px var(--shadow);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.login-field { display: flex; flex-direction: column; gap: 5px; }
+.login-field label { font-size: 11px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+.login-field input {
+  padding: 13px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; background: var(--paper);
+  font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--ink); outline: none;
+}
+.login-field input:focus { border-color: var(--amber); background: white; }
+.login-error { color: #dc2626; font-size: 13px; font-weight: 500; min-height: 18px; text-align: center; }
+.login-btn {
+  padding: 14px; background: var(--ink); color: var(--paper);
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+  cursor: pointer; margin-top: 4px; transition: background 0.2s;
+}
+.login-btn:hover { background: var(--amber); color: var(--ink); }
 </style>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -402,6 +441,24 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 <body>
 
 <div id="saveStatus"></div>
+
+<!-- KIRJAUTUMINEN -->
+<div id="loginScreen">
+  <div class="login-logo">Sana<em>ristikko</em>arkisto</div>
+  <div class="login-sub">Kirjaudu sisään jatkaaksesi</div>
+  <div class="login-card">
+    <div class="login-field">
+      <label>Sähköposti</label>
+      <input type="email" id="loginEmail" placeholder="sinä@email.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Salasana</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Kirjaudu sisään</button>
+  </div>
+</div>
 
 <!-- Muokkausmodal -->
 <div class="modal-overlay" id="editModal" onclick="closeEditIfOutside(event)">
@@ -465,7 +522,10 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
   <div class="header">
     <div class="header-top">
       <h1 class="site-title">Sana<em>ristikko</em>arkisto</h1>
-      <span class="count-chip" id="totalCount">0 ristikkoa</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="count-chip" id="totalCount">0 ristikkoa</span>
+        <button onclick="doSignOut()" title="Kirjaudu ulos" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--muted);">🚪</button>
+      </div>
     </div>
     <div class="search-wrap">
       <input type="text" id="searchInput" placeholder="Hae ristikon nimellä...">
@@ -537,6 +597,7 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -544,11 +605,12 @@ const firebaseConfig = {
   projectId: "hakemuspaivakirja",
   storageBucket: "hakemuspaivakirja.firebasestorage.app",
   messagingSenderId: "836133210317",
-  appId: "1:836133210317:web:d85131ae272ecf1938c184"
+  appId: "1:836133210301:web:d85131ae272ecf1938c184"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const DATA_DOC = doc(db, "ristikot", "data");
 
 let puzzles = [];
@@ -556,6 +618,56 @@ let isSaving = false;
 let photoBase64 = null;
 
 const MONTHS_FI = ['','Tammikuu','Helmikuu','Maaliskuu','Huhtikuu','Toukokuu','Kesäkuu','Heinäkuu','Elokuu','Syyskuu','Lokakuu','Marraskuu','Joulukuu'];
+
+// ============================
+// KIRJAUTUMINEN
+// ============================
+window.doLogin = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  err.textContent = '';
+  if(!email || !password){ err.textContent = 'Täytä sähköposti ja salasana.'; return; }
+  btn.textContent = 'Kirjaudutaan...';
+  btn.disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch(e) {
+    btn.textContent = 'Kirjaudu sisään';
+    btn.disabled = false;
+    if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'){
+      err.textContent = 'Väärä sähköposti tai salasana.';
+    } else if(e.code === 'auth/too-many-requests'){
+      err.textContent = 'Liian monta yritystä. Yritä myöhemmin.';
+    } else {
+      err.textContent = 'Kirjautumisvirhe. Tarkista yhteys.';
+    }
+  }
+};
+
+document.getElementById('loginPassword').addEventListener('keydown', e => {
+  if(e.key === 'Enter') window.doLogin();
+});
+document.getElementById('loginEmail').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('loginPassword').focus();
+});
+
+window.doSignOut = async function(){
+  if(!confirm('Kirjaudutaanko ulos?')) return;
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+  if(user){
+    document.getElementById('loginScreen').style.display = 'none';
+    loadData();
+  } else {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginBtn').textContent = 'Kirjaudu sisään';
+    document.getElementById('loginBtn').disabled = false;
+  }
+});
 
 // ============================
 // STATUS
@@ -1033,7 +1145,6 @@ const now = new Date();
 document.getElementById('puzzleMonth').value = now.getMonth() + 1;
 document.getElementById('puzzleYear').value = now.getFullYear();
 
-loadData();
 </script>
 
 <script>

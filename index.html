@@ -21,6 +21,10 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--paper);
@@ -45,7 +49,7 @@ body::before {
   border-bottom: 2px solid var(--ink);
   margin-bottom: 32px;
 }
-.header-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.header-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
 .site-title {
   font-family: 'Playfair Display', serif;
   font-size: clamp(28px, 7vw, 42px);
@@ -522,9 +526,9 @@ input:focus, select:focus { border-color: var(--amber); background: white; }
   <div class="header">
     <div class="header-top">
       <h1 class="site-title">Sana<em>ristikko</em>arkisto</h1>
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <span class="count-chip" id="totalCount">0 ristikkoa</span>
-        <button onclick="doSignOut()" title="Kirjaudu ulos" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--muted);">🚪</button>
+        <button onclick="doSignOut()" title="Kirjaudu ulos" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;cursor:pointer;color:var(--muted);flex-shrink:0;">🚪</button>
       </div>
     </div>
     <div class="search-wrap">

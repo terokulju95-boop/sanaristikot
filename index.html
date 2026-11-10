@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sanaristikkoarkisto</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Fontit ladataan omalta palvelimelta (fonts/, SIL Open Font License), ei Googlelta -->
+<style>
+@font-face { font-family: 'Playfair Display'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/playfair-display-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Playfair Display'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/playfair-display-latin-400-italic.woff2) format('woff2'); }
+@font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 300; font-display: swap; src: url(fonts/dm-sans-latin-300-normal.woff2) format('woff2'); }
+@font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/dm-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/dm-sans-latin-500-normal.woff2) format('woff2'); }
+</style>
 <style>
 :root {
   --ink: #1a1208;
@@ -621,6 +627,13 @@ let puzzles = [];
 let isSaving = false;
 let photoBase64 = null;
 
+// Tekstin suojaus: kaikki tallennettu teksti muutetaan merkeiksi ennen sivulle liittämistä,
+// jotta nimi, numero tai muu kenttä ei voi koskaan sisältää HTML:ää tai ajettavaa koodia.
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Kuvaksi hyväksytään vain puhelimessa pakattu JPEG/PNG/WebP-kuva (data-osoite).
+const safePhoto = v => typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : null;
+const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+
 const MONTHS_FI = ['','Tammikuu','Helmikuu','Maaliskuu','Huhtikuu','Toukokuu','Kesäkuu','Heinäkuu','Elokuu','Syyskuu','Lokakuu','Marraskuu','Joulukuu'];
 
 // ============================
@@ -777,7 +790,6 @@ window.previewPhoto = (input) => {
       const preview = document.getElementById('photoPreview');
       preview.src = photoBase64;
       preview.style.display = 'block';
-      document.querySelector('.photo-upload').style.display = 'none';
     };
     img.src = e.target.result;
   };
@@ -811,7 +823,6 @@ window.addPuzzle = async () => {
   document.getElementById('photoInput').value = '';
   document.getElementById('cameraInput').value = '';
   document.getElementById('photoPreview').style.display = 'none';
-  document.querySelector('.photo-upload').style.display = 'block';
   photoBase64 = null;
   render();
 };
@@ -831,6 +842,7 @@ window.deletePuzzle = async (id) => {
 // LIGHTBOX
 // ============================
 window.openLightbox = (src) => {
+  if(!safePhoto(src)) return;
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightbox').classList.add('open');
 };
@@ -875,7 +887,7 @@ function renderStats(){
   const maxCount = Math.max(...monthlyCounts.slice(1), 1);
 
   const yearTabs = years.map(y =>
-    `<button class="year-tab${y===selectedYear?' active':''}" onclick="selectYear(${y})">${y}</button>`
+    `<button class="year-tab${y===selectedYear?' active':''}" onclick="selectYear(${num(y)})">${esc(y)}</button>`
   ).join('');
 
   const bars = Array.from({length:12},(_,i)=>{
@@ -901,7 +913,7 @@ function renderStats(){
       <div class="stats-total">
         <div>
           <div class="stats-total-num">${yearTotal}</div>
-          <div class="stats-total-label">ristikkoa vuonna ${selectedYear}</div>
+          <div class="stats-total-label">ristikkoa vuonna ${esc(selectedYear)}</div>
         </div>
         <div style="text-align:right;font-size:12px;color:var(--muted);">
           Aktiivisin kuukausi:<br>
@@ -939,7 +951,7 @@ function render(){
     area.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📖</div>
-        <div class="empty-text">${query ? 'Ei hakutuloksia nimellä "'+query+'"' : 'Ei ristikkoja vielä.<br>Lisää ensimmäinen ylhäältä!'}</div>
+        <div class="empty-text">${query ? 'Ei hakutuloksia nimellä "'+esc(query)+'"' : 'Ei ristikkoja vielä.<br>Lisää ensimmäinen ylhäältä!'}</div>
       </div>`;
     return;
   }
@@ -957,23 +969,22 @@ function render(){
 
   area.innerHTML = sortedKeys.map(key => {
     const g = groups[key];
-    const monthShort = `${g.month}/${String(g.year).slice(-2)}`;
-    const monthFull = `${MONTHS_FI[g.month]} ${g.year}`;
+    const monthFull = `${esc(MONTHS_FI[g.month] || '')} ${esc(g.year)}`;
 
     const cards = g.puzzles.map(p => `
       <div class="puzzle-card">
-        ${p.photo
-          ? `<img class="puzzle-thumb" src="${p.photo}" alt="${p.name}" onclick="openLightbox('${p.photo}')">`
+        ${safePhoto(p.photo)
+          ? `<img class="puzzle-thumb" src="${safePhoto(p.photo)}" alt="${esc(p.name)}" onclick="openLightbox(this.src)">`
           : `<div class="thumb-placeholder">📰</div>`
         }
         <div class="puzzle-info">
-          <div class="puzzle-name">${p.name}</div>
+          <div class="puzzle-name">${esc(p.name)}</div>
           <div class="puzzle-meta">
-            ${MONTHS_FI[p.month]} ${p.year}${p.number ? ' · ' + p.number : ''}
+            ${esc(MONTHS_FI[p.month] || '')} ${esc(p.year)}${p.number ? ' · ' + esc(p.number) : ''}
           </div>
         </div>
-        <button class="puzzle-edit" onclick="openEdit('${p.id}')" title="Muokkaa" style="width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin-right:4px;" onmouseover="this.style.background='#fef3c7';this.style.borderColor='#fcd34d';this.style.color='#92400e'" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';this.style.color='var(--muted)'">✏️</button>
-        <button class="puzzle-delete" onclick="deletePuzzle('${p.id}')" title="Poista">✕</button>
+        <button class="puzzle-edit" data-id="${esc(p.id)}" onclick="openEdit(this.dataset.id)" title="Muokkaa" style="width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin-right:4px;" onmouseover="this.style.background='#fef3c7';this.style.borderColor='#fcd34d';this.style.color='#92400e'" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';this.style.color='var(--muted)'">✏️</button>
+        <button class="puzzle-delete" data-id="${esc(p.id)}" onclick="deletePuzzle(this.dataset.id)" title="Poista">✕</button>
       </div>
     `).join('');
 
@@ -1005,7 +1016,7 @@ window.openEdit = (id) => {
   const p = puzzles.find(p => p.id === id);
   if(!p) return;
   editingId = id;
-  editPhotoBase64 = p.photo || null;
+  editPhotoBase64 = safePhoto(p.photo);
 
   document.getElementById('editName').value = p.name;
   document.getElementById('editMonth').value = p.month;
@@ -1014,8 +1025,8 @@ window.openEdit = (id) => {
 
   const thumb = document.getElementById('editThumb');
   const placeholder = document.getElementById('editThumbPlaceholder');
-  if(p.photo){
-    thumb.src = p.photo;
+  if(safePhoto(p.photo)){
+    thumb.src = safePhoto(p.photo);
     thumb.style.display = 'block';
     placeholder.style.display = 'none';
   } else {
@@ -1096,8 +1107,8 @@ window.showSuggestions = function(val){
 
   acIndex = -1;
   list.innerHTML = matches.map((name, i) => {
-    const highlighted = '<mark>' + name.slice(0, val.length) + '</mark>' + name.slice(val.length);
-    return `<div class="autocomplete-item" data-val="${name}" onmousedown="selectSuggestion('${name}')">
+    const highlighted = '<mark>' + esc(name.slice(0, val.length)) + '</mark>' + esc(name.slice(val.length));
+    return `<div class="autocomplete-item" data-val="${esc(name)}" onmousedown="selectSuggestion(this.dataset.val)">
       📝 ${highlighted}
     </div>`;
   }).join('');
